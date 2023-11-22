@@ -25,6 +25,10 @@ documentation = "https://docs.langflow.org"
 langflow = "langflow.__main__:main"
 
 [tool.poetry.dependencies]
+thrift = "0.16.0"
+sasl = "0.3.1"
+thrift-sasl = "0.4.3"
+PyHive = { git = "https://github.com/advwacloud/PyHive.git", branch = "adv-develop" }
 python = ">=3.9,<3.11"
 fastapi = "^0.103.0"
 uvicorn = "^0.23.0"
