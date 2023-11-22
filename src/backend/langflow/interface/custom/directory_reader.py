@@ -2,6 +2,7 @@ import os
 import ast
 import zlib
 from loguru import logger
+from langflow.services.getters import get_settings_service
 
 
 class CustomComponentPathValueError(ValueError):
@@ -38,6 +39,8 @@ class DirectoryReader:
     # Ensure the base path to read the files that contain
     # the custom components from this directory.
     base_path = ""
+
+    missing_build_msg = "Missing build function"
 
     def __init__(self, directory_path, compress_code_field=False):
         """
@@ -207,7 +210,7 @@ class DirectoryReader:
         elif not self.validate_code(file_content):
             return False, "Syntax error"
         elif not self.validate_build(file_content):
-            return False, "Missing build function"
+            return False, self.missing_build_msg
         elif self._is_type_hint_used_in_args(
             "Optional", file_content
         ) and not self._is_type_hint_imported("Optional", file_content):
@@ -219,6 +222,24 @@ class DirectoryReader:
             if self.compress_code_field:
                 file_content = str(StringCompressor(file_content).compress_string())
             return True, file_content
+        
+    def get_menu_name(self,file_path: str):
+        settings_service = get_settings_service()
+
+        selected_path_prefix = ""
+
+        for path in settings_service.settings.COMPONENTS_PATH:
+            if file_path.startswith(path):
+                selected_path_prefix = path
+                break
+
+        # ensure slash ending
+        path_prefix = os.path.join(selected_path_prefix, '') 
+
+        relative_path = file_path.replace(path_prefix, '')
+        menu_name = relative_path.split('/')[0]
+        return menu_name
+
 
     def build_component_menu_list(self, file_paths):
         """
@@ -231,11 +252,15 @@ class DirectoryReader:
         )
 
         for file_path in file_paths:
-            menu_name = os.path.basename(os.path.dirname(file_path))
+            menu_name = self.get_menu_name(file_path)
             logger.debug(f"Menu name: {menu_name}")
             filename = os.path.basename(file_path)
             validation_result, result_content = self.process_file(file_path)
             logger.debug(f"Validation result: {validation_result}")
+
+
+            if validation_result == False and result_content == self.missing_build_msg:
+                continue
 
             menu_result = self.find_menu(response, menu_name) or {
                 "name": menu_name,
